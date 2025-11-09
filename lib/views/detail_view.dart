@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../controllers/detail_controller.dart';
-import '../../../core/values/app_colors.dart';
-import '../../../core/utils/date_formatter.dart';
+import '../utils/app_colors.dart';
+import '../utils/date_formatter.dart';
 
-/// View untuk Detail Page
+/// View untuk Detail Page (Menggunakan konsep MVC)
 /// Menampilkan detail berita lengkap
 class DetailView extends GetView<DetailController> {
   const DetailView({Key? key}) : super(key: key);

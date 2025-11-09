@@ -22,7 +22,22 @@ cd news_app_getx
 # Atau download dan extract ZIP
 ```
 
-### 2. Install Dependencies
+### 2. Cek Struktur Folder
+
+Pastikan struktur folder sesuai dengan arsitektur MVC:
+
+```
+lib/
+├── main.dart
+├── controllers/      # Business logic
+├── models/          # Data structures
+├── views/           # User interface
+├── services/        # API/Network layer
+├── routes/          # Navigation
+└── utils/           # Helper classes
+```
+
+### 3. Install Dependencies
 
 Jalankan perintah berikut di terminal:
 
@@ -31,12 +46,12 @@ flutter pub get
 ```
 
 Ini akan menginstall semua dependencies yang tercantum di `pubspec.yaml`:
-- `get` - State management
+- `get` - State management & routing
 - `http` - HTTP client
 - `intl` - Internationalization
 - `cached_network_image` - Image caching
 
-### 3. Setup News API Key
+### 4. Setup News API Key
 
 #### A. Daftar di News API
 
@@ -47,7 +62,7 @@ Ini akan menginstall semua dependencies yang tercantum di `pubspec.yaml`:
 
 #### B. Tambahkan API Key ke Project
 
-1. Buka file: `lib/app/data/providers/news_api_provider.dart`
+1. Buka file: `lib/services/news_api_service.dart`
 2. Cari baris:
    ```dart
    static const String _apiKey = 'YOUR_API_KEY_HERE';
@@ -60,7 +75,7 @@ Ini akan menginstall semua dependencies yang tercantum di `pubspec.yaml`:
 
 > ⚠️ **PENTING**: Jangan share API key Anda di public repository!
 
-### 4. Verifikasi Setup
+### 5. Verifikasi Setup
 
 Cek apakah Flutter sudah terinstall dengan baik:
 
@@ -70,7 +85,7 @@ flutter doctor
 
 Pastikan tidak ada error kritis (✓ atau ✗).
 
-### 5. Jalankan Aplikasi
+### 6. Jalankan Aplikasi
 
 #### A. Menggunakan Terminal
 
@@ -108,7 +123,7 @@ flutter run -d iPhone         # iOS Simulator
 **Penyebab:** API key belum di-setup atau salah
 
 **Solusi:**
-1. Pastikan API key sudah ditambahkan di `news_api_provider.dart`
+1. Pastikan API key sudah ditambahkan di `lib/services/news_api_service.dart`
 2. Cek koneksi internet
 3. Verifikasi API key di [https://newsapi.org/account](https://newsapi.org/account)
 
@@ -154,28 +169,62 @@ flutter run
 - Pastikan widget wrapped dengan `Obx()`
 - Update value dengan `.value`
 
+**Contoh:**
+```dart
+// Di Controller
+final articles = <Article>[].obs;  // ✅ Gunakan .obs
+
+// Update
+articles.value = newData;  // ✅ Update dengan .value
+
+// Di View
+Obx(() => ListView(...))  // ✅ Wrap dengan Obx()
+```
+
 ---
 
-## 📱 Testing di Berbagai Platform
+## 📁 Memahami Struktur MVC
 
-### Android
-```bash
-flutter run -d android
+### Model (`lib/models/`)
+Data structure dan JSON parsing
+```dart
+class ArticleModel {
+  final String title;
+  factory ArticleModel.fromJson(Map json) { }
+}
 ```
 
-### iOS (hanya di macOS)
-```bash
-flutter run -d ios
+### View (`lib/views/`)
+User Interface (UI widgets)
+```dart
+class HomeView extends GetView<HomeController> {
+  Widget build(BuildContext context) { }
+}
 ```
 
-### Web
-```bash
-flutter run -d chrome
+### Controller (`lib/controllers/`)
+Business logic dan state management
+```dart
+class HomeController extends GetxController {
+  final articles = <Article>[].obs;
+  Future<void> fetchArticles() { }
+}
 ```
 
-### Windows (Windows only)
-```bash
-flutter run -d windows
+### Service (`lib/services/`)
+API calls dan network requests
+```dart
+class NewsApiService {
+  Future<List<Article>> getArticles() { }
+}
+```
+
+### Routes (`lib/routes/`)
+Navigation configuration
+```dart
+class AppRoutes {
+  static const home = '/home';
+}
 ```
 
 ---
@@ -199,7 +248,7 @@ flutter run -d windows
 
 ### Mengubah Warna Theme
 
-Edit file: `lib/app/core/values/app_colors.dart`
+Edit file: `lib/utils/app_colors.dart`
 
 ```dart
 class AppColors {
@@ -210,10 +259,10 @@ class AppColors {
 
 ### Mengubah Negara Berita
 
-Edit file: `lib/app/modules/home/controllers/home_controller.dart`
+Edit file: `lib/controllers/home_controller.dart`
 
 ```dart
-final response = await _apiProvider.getTopHeadlines(
+final response = await _apiService.getTopHeadlines(
   country: 'id',  // id = Indonesia, us = USA, gb = UK
   category: selectedCategory.value,
 );
@@ -276,6 +325,31 @@ flutter pub global run devtools
 
 ---
 
+## 🧪 Testing Aplikasi
+
+### Menambah File untuk Testing
+
+Buat folder `test/` dan tambahkan unit tests:
+
+```dart
+// test/controllers/home_controller_test.dart
+void main() {
+  test('HomeController loads articles', () async {
+    final controller = HomeController();
+    await controller.fetchArticles();
+    expect(controller.articles.isNotEmpty, true);
+  });
+}
+```
+
+### Run Tests
+
+```bash
+flutter test
+```
+
+---
+
 ## 📚 Resource Tambahan
 
 ### Official Documentation
@@ -286,6 +360,7 @@ flutter pub global run devtools
 ### Tutorials
 - [Flutter Cookbook](https://flutter.dev/docs/cookbook)
 - [GetX Pattern](https://github.com/kauemurakami/getx_pattern)
+- [MVC Pattern](https://en.wikipedia.org/wiki/Model%E2%80%93view%E2%80%93controller)
 
 ### Community
 - [Flutter Community](https://flutter.dev/community)
@@ -299,10 +374,41 @@ Sebelum mulai development, pastikan:
 
 - [ ] Flutter SDK terinstall
 - [ ] Dependencies ter-install (`flutter pub get`)
-- [ ] API Key sudah ditambahkan
+- [ ] API Key sudah ditambahkan di `services/news_api_service.dart`
 - [ ] App bisa running di device/emulator
 - [ ] Hot reload berfungsi
 - [ ] Bisa fetch dan display data dari API
+- [ ] Memahami struktur folder MVC
+
+---
+
+## 🎓 Tips Belajar
+
+### 1. Mulai dari Struktur
+```
+1. Pahami main.dart
+2. Baca routes/app_pages.dart
+3. Lihat models/
+4. Baca services/
+5. Pahami controllers/
+6. Terakhir views/
+```
+
+### 2. Trace Data Flow
+```
+User tap button (View)
+  → Controller method dipanggil
+    → Service fetch dari API
+      → Model parse JSON
+        → Controller update state
+          → View auto-rebuild
+```
+
+### 3. Experiment!
+- Tambah field baru di Model
+- Buat controller method baru
+- Tambah widget di View
+- Try & error adalah cara terbaik belajar!
 
 ---
 
@@ -313,8 +419,42 @@ Jika mengalami masalah:
 1. Cek dokumentasi di `README.md`
 2. Baca error message dengan teliti
 3. Google error message + "flutter"
-4. Tanya di Stack Overflow dengan tag `flutter` dan `getx`
-5. Konsultasi dengan instruktur atau mentor
+4. Cek `PENJELASAN_GETX.md` untuk detail GetX
+5. Lihat `CONTOH_KODE.md` untuk code examples
+6. Tanya di Stack Overflow dengan tag `flutter` dan `getx`
+
+---
+
+## 📝 Common Commands
+
+```bash
+# Install dependencies
+flutter pub get
+
+# Run app
+flutter run
+
+# Hot reload
+r (di terminal saat app running)
+
+# Hot restart
+R (di terminal saat app running)
+
+# Clean project
+flutter clean
+
+# Build APK
+flutter build apk --release
+
+# Run tests
+flutter test
+
+# Check Flutter installation
+flutter doctor
+
+# Update Flutter
+flutter upgrade
+```
 
 ---
 

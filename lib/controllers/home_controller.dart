@@ -1,12 +1,12 @@
 import 'package:get/get.dart';
-import '../../../data/models/article_model.dart';
-import '../../../data/providers/news_api_provider.dart';
+import '../models/article_model.dart';
+import '../services/news_api_service.dart';
 
-/// Controller untuk Home Page
+/// Controller untuk Home Page (Menggunakan konsep MVC)
 /// Menggunakan GetX untuk state management
 class HomeController extends GetxController {
-  // Instance dari NewsApiProvider
-  final NewsApiProvider _apiProvider = NewsApiProvider();
+  // Instance dari NewsApiService
+  final NewsApiService _apiService = NewsApiService();
   
   // Observable list untuk menyimpan artikel
   // Rx membuat variabel menjadi reactive (observable)
@@ -45,8 +45,8 @@ class HomeController extends GetxController {
       isLoading.value = true;
       errorMessage.value = '';
       
-      // Call API
-      final response = await _apiProvider.getTopHeadlines(
+      // Call API Service
+      final response = await _apiService.getTopHeadlines(
         country: 'us',
         category: selectedCategory.value,
       );
@@ -88,7 +88,7 @@ class HomeController extends GetxController {
       isLoading.value = true;
       errorMessage.value = '';
       
-      final response = await _apiProvider.searchNews(query);
+      final response = await _apiService.searchNews(query);
       articles.value = response.articles;
       
     } catch (e) {

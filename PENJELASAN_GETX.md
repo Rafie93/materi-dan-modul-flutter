@@ -1,4 +1,4 @@
-# 📘 Penjelasan Mendalam: GetX State Management
+# 📘 Penjelasan Mendalam: GetX dengan Arsitektur MVC
 
 ## Apa itu GetX?
 
@@ -11,466 +11,506 @@ GetX menawarkan solusi yang simple, powerful, dan high-performance.
 
 ---
 
-## 🎯 Mengapa Menggunakan GetX?
+## 🏗️ Arsitektur MVC + GetX
 
-### Perbandingan dengan State Management Lain
+### Konsep MVC (Model-View-Controller)
 
-| Fitur | GetX | Provider | BLoC | setState |
-|-------|------|----------|------|----------|
-| Complexity | ⭐ Simple | ⭐⭐ Medium | ⭐⭐⭐ Complex | ⭐ Very Simple |
-| Boilerplate | Minimal | Medium | Banyak | None |
-| Performance | Excellent | Good | Excellent | Poor |
-| Learning Curve | Easy | Medium | Steep | Easy |
-| Features | All-in-one | State only | State only | Basic |
+MVC adalah design pattern yang memisahkan aplikasi menjadi 3 komponen utama:
 
-### Keuntungan GetX:
-1. **Minimal Boilerplate** - Kode lebih sedikit, produktivitas tinggi
-2. **High Performance** - Hanya rebuild widget yang diperlukan
-3. **All-in-one** - State, routing, dependency dalam satu package
-4. **Easy to Learn** - Syntax sederhana dan intuitif
-5. **Decoupled** - View dan logic terpisah sempurna
+```
+┌──────────────┐
+│     VIEW     │  ← User Interface (Widget)
+│ (views/)     │    - Tampilan
+└──────┬───────┘    - Input user
+       │
+       ↓ Event
+┌──────────────┐
+│  CONTROLLER  │  ← Business Logic
+│(controllers/)│    - State management
+└──────┬───────┘    - Logic aplikasi
+       │
+       ↓ Data
+┌──────────────┐
+│    MODEL     │  ← Data Structure
+│  (models/)   │    - Parse JSON
+└──────┬───────┘    - Data validation
+       │
+┌──────────────┐
+│   SERVICE    │  ← Network/API Layer
+│ (services/)  │    - API calls
+└──────────────┘    - HTTP requests
+```
 
 ---
 
-## 🔑 Konsep Dasar GetX
+## 🎯 Mengapa MVC + GetX?
 
-### 1. Reactive State Management
+### Keuntungan Kombinasi MVC + GetX:
 
-#### Observable (.obs)
+| Aspek | Keuntungan |
+|-------|-----------|
+| **Separation** | Clear separation: UI, Logic, Data |
+| **Maintainability** | Easy to maintain dan debug |
+| **Testability** | Easy to write unit tests |
+| **Scalability** | Mudah dikembangkan |
+| **Readability** | Struktur jelas, mudah dipahami |
+| **Performance** | GetX reactive system sangat cepat |
 
-Membuat variabel menjadi observable (reactive):
+### Perbandingan dengan setState:
 
-```dart
-// Primitive types
-final count = 0.obs;
-final name = ''.obs;
-final isLoading = false.obs;
-
-// Collections
-final items = <String>[].obs;
-final map = <String, int>{}.obs;
-
-// Custom objects
-final user = User().obs;
-```
-
-**Cara Menggunakan:**
-```dart
-// Set value
-count.value = 10;
-name.value = 'John';
-items.value = ['A', 'B', 'C'];
-
-// Get value
-print(count.value);  // Output: 10
-print(name.value);   // Output: John
-```
-
-#### Obx() Widget
-
-Widget yang otomatis rebuild ketika observable berubah:
-
-```dart
-Obx(() => Text('Count: ${controller.count.value}'))
-```
-
-**Kapan menggunakan Obx()?**
-- ✅ Untuk widget yang data-nya berubah
-- ✅ Ketika ingin auto-rebuild
-- ❌ Jangan wrap seluruh screen (tidak efisien)
-- ❌ Hindari nested Obx() yang deep
+| Fitur | setState | GetX + MVC |
+|-------|---------|------------|
+| Complexity | Simple | Medium |
+| Boilerplate | Minimal | Minimal |
+| Performance | Poor | Excellent |
+| Scalability | Poor | Excellent |
+| Testing | Hard | Easy |
+| Structure | None | Clear MVC |
 
 ---
 
-### 2. Simple State Management
+## 📁 Struktur Folder MVC
 
-Untuk kasus simple, gunakan GetBuilder:
+```
+lib/
+├── main.dart                    # Entry point
+│
+├── models/                      # MODEL Layer
+│   ├── article_model.dart       # Data structure
+│   └── user_model.dart          # Data structure
+│
+├── views/                       # VIEW Layer
+│   ├── home_view.dart           # UI Home
+│   ├── detail_view.dart         # UI Detail
+│   └── widgets/                 # Reusable widgets
+│       └── article_card.dart
+│
+├── controllers/                 # CONTROLLER Layer
+│   ├── home_controller.dart     # Business logic
+│   └── detail_controller.dart   # Business logic
+│
+├── services/                    # SERVICE Layer
+│   ├── news_api_service.dart    # API calls
+│   └── storage_service.dart     # Local storage
+│
+├── routes/                      # ROUTING
+│   ├── app_routes.dart          # Route names
+│   └── app_pages.dart           # Route config
+│
+└── utils/                       # UTILITIES
+    ├── app_colors.dart          # Constants
+    └── date_formatter.dart      # Helpers
+```
+
+---
+
+## 🔑 Konsep GetX dalam MVC
+
+### 1. MODEL Layer
+
+**Lokasi:** `lib/models/`
+
+Model hanya berisi struktur data, tidak ada logic.
 
 ```dart
-class Controller extends GetxController {
-  int count = 0;
+// models/article_model.dart
+class ArticleModel {
+  final String title;
+  final String? description;
   
-  void increment() {
-    count++;
-    update();  // Trigger rebuild
+  ArticleModel({required this.title, this.description});
+  
+  // ✅ Parsing JSON - OK di Model
+  factory ArticleModel.fromJson(Map<String, dynamic> json) {
+    return ArticleModel(
+      title: json['title'] ?? '',
+      description: json['description'],
+    );
+  }
+  
+  // ✅ Serialize - OK di Model
+  Map<String, dynamic> toJson() => {
+    'title': title,
+    'description': description,
+  };
+}
+```
+
+**✅ Yang BOLEH di Model:**
+- Data structure (fields)
+- Constructor
+- fromJson (parsing)
+- toJson (serialization)
+- Data validation methods
+
+**❌ Yang TIDAK BOLEH di Model:**
+- Business logic
+- API calls
+- State management
+- UI widgets
+
+---
+
+### 2. SERVICE Layer
+
+**Lokasi:** `lib/services/`
+
+Service handle komunikasi dengan external sources (API, database, dll).
+
+```dart
+// services/news_api_service.dart
+class NewsApiService {
+  final String _baseUrl = 'https://api.example.com';
+  
+  // ✅ API call - OK di Service
+  Future<List<ArticleModel>> getArticles() async {
+    try {
+      final response = await http.get(Uri.parse('$_baseUrl/articles'));
+      
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        return (jsonData['articles'] as List)
+            .map((item) => ArticleModel.fromJson(item))
+            .toList();
+      } else {
+        throw Exception('Failed: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error: $e');
+    }
+  }
+  
+  // ✅ POST request - OK di Service
+  Future<bool> createArticle(ArticleModel article) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/articles'),
+      body: json.encode(article.toJson()),
+    );
+    return response.statusCode == 201;
   }
 }
-
-// Di View
-GetBuilder<Controller>(
-  builder: (controller) => Text('${controller.count}'),
-)
 ```
 
-**GetBuilder vs Obx:**
+**✅ Yang BOLEH di Service:**
+- HTTP requests (GET, POST, PUT, DELETE)
+- Parse response ke Model
+- Error handling untuk network
+- Authentication headers
 
-| GetBuilder | Obx |
-|------------|-----|
-| Manual update() | Auto update |
-| Rebuild semua widget | Hanya rebuild yang berubah |
-| Performa baik | Performa excellent |
-| Untuk state sederhana | Untuk reactive programming |
+**❌ Yang TIDAK BOLEH di Service:**
+- State management
+- UI logic
+- Business rules
+- Widget building
 
 ---
 
-### 3. Controller Lifecycle
+### 3. CONTROLLER Layer
+
+**Lokasi:** `lib/controllers/`
+
+Controller adalah "otak" aplikasi. Manage state dan business logic.
 
 ```dart
-class MyController extends GetxController {
+// controllers/home_controller.dart
+class HomeController extends GetxController {
+  // ✅ Service instance
+  final NewsApiService _apiService = NewsApiService();
   
+  // ✅ Reactive state dengan .obs
+  final RxList<ArticleModel> articles = <ArticleModel>[].obs;
+  final RxBool isLoading = false.obs;
+  final RxString errorMessage = ''.obs;
+  
+  // ✅ Lifecycle
   @override
   void onInit() {
     super.onInit();
-    print('Controller initialized');
-    // Initialize data, listeners, dll
-    // Dipanggil 1x saat controller dibuat
+    fetchArticles();
   }
   
-  @override
-  void onReady() {
-    super.onReady();
-    print('Controller ready');
-    // Dipanggil setelah widget rendered
-    // Bagus untuk fetch data
-  }
-  
-  @override
-  void onClose() {
-    super.onClose();
-    print('Controller disposed');
-    // Cleanup: close streams, dispose controllers
-    // Otomatis dipanggil saat controller tidak digunakan
-  }
-}
-```
-
-**Best Practices:**
-- `onInit()`: Initialize variables, setup listeners
-- `onReady()`: API calls, fetch data
-- `onClose()`: Cleanup resources
-
----
-
-### 4. Dependency Injection
-
-GetX menyediakan cara mudah untuk inject dependencies:
-
-#### Get.put()
-Membuat instance dan menyimpannya di memory:
-
-```dart
-// Inject
-final controller = Get.put(HomeController());
-
-// Use
-Get.find<HomeController>();
-```
-
-#### Get.lazyPut()
-Membuat instance hanya saat pertama kali dibutuhkan:
-
-```dart
-Get.lazyPut(() => HomeController());
-
-// Instance dibuat saat pertama kali dipanggil
-final controller = Get.find<HomeController>();
-```
-
-#### Get.putAsync()
-Untuk async initialization:
-
-```dart
-Get.putAsync<SharedPreferences>(() async {
-  final prefs = await SharedPreferences.getInstance();
-  return prefs;
-});
-```
-
-#### Bindings (Recommended!)
-
-Cara terbaik untuk manage dependencies:
-
-```dart
-class HomeBinding extends Bindings {
-  @override
-  void dependencies() {
-    Get.lazyPut(() => HomeController());
-    Get.lazyPut(() => ApiService());
-  }
-}
-
-// Di routes
-GetPage(
-  name: '/home',
-  page: () => HomePage(),
-  binding: HomeBinding(),
-)
-```
-
-**Keuntungan Bindings:**
-- Automatic disposal saat page di-close
-- Lazy loading
-- Clean separation
-
----
-
-### 5. Route Management
-
-#### Basic Navigation
-
-```dart
-// Navigate ke halaman baru
-Get.to(NextPage());
-
-// Named route
-Get.toNamed('/details');
-
-// Replace (tidak bisa back)
-Get.off(NextPage());
-
-// Clear all dan navigate
-Get.offAll(HomePage());
-
-// Back
-Get.back();
-```
-
-#### Passing Data
-
-**Method 1: Arguments**
-```dart
-// Send
-Get.toNamed('/details', arguments: {'id': 1, 'name': 'John'});
-
-// Receive
-final args = Get.arguments;
-final id = args['id'];
-final name = args['name'];
-```
-
-**Method 2: Parameters**
-```dart
-// Send
-Get.toNamed('/user/123/profile');
-
-// Route definition
-GetPage(
-  name: '/user/:id/profile',
-  page: () => ProfilePage(),
-)
-
-// Receive
-final id = Get.parameters['id'];
-```
-
-#### Route with Result
-
-```dart
-// Navigate dan tunggu result
-var result = await Get.toNamed('/edit');
-
-// Return result dari page sebelumnya
-Get.back(result: 'Data updated');
-```
-
----
-
-### 6. GetX Utilities
-
-#### Snackbar
-
-```dart
-Get.snackbar(
-  'Title',
-  'Message',
-  snackPosition: SnackPosition.BOTTOM,
-  backgroundColor: Colors.green,
-  colorText: Colors.white,
-  duration: Duration(seconds: 3),
-);
-```
-
-#### Dialog
-
-```dart
-Get.dialog(
-  AlertDialog(
-    title: Text('Title'),
-    content: Text('Content'),
-    actions: [
-      TextButton(
-        onPressed: () => Get.back(),
-        child: Text('Close'),
-      ),
-    ],
-  ),
-);
-```
-
-#### BottomSheet
-
-```dart
-Get.bottomSheet(
-  Container(
-    child: Wrap(
-      children: [
-        ListTile(
-          leading: Icon(Icons.music_note),
-          title: Text('Music'),
-          onTap: () {},
-        ),
-      ],
-    ),
-  ),
-);
-```
-
----
-
-## 🎓 Pattern GetX di Aplikasi News
-
-### Architecture Overview
-
-```
-View (UI)
-    ↓ user interaction
-Controller (Logic & State)
-    ↓ calls
-Provider (API Service)
-    ↓ returns
-Model (Data)
-    ↓ updates
-Controller
-    ↓ notifies
-View (Auto rebuild via Obx)
-```
-
-### Data Flow
-
-```dart
-// 1. User tap refresh
-onTap: () => controller.refreshNews()
-
-// 2. Controller fetch data
-Future<void> refreshNews() async {
-  isLoading.value = true;  // UI shows loading
-  
-  try {
-    // 3. Call API provider
-    final response = await apiProvider.getTopHeadlines();
+  // ✅ Business logic method
+  Future<void> fetchArticles() async {
+    isLoading.value = true;
+    errorMessage.value = '';
     
-    // 4. Update observable
-    articles.value = response.articles;
-    
-    // 5. Obx() auto-rebuild UI dengan data baru
-  } catch (e) {
-    // 6. Show error
-    Get.snackbar('Error', e.toString());
-  } finally {
-    isLoading.value = false;  // Hide loading
-  }
-}
-```
-
----
-
-## 💡 Best Practices
-
-### 1. Controller Best Practices
-
-```dart
-class GoodController extends GetxController {
-  // ✅ Use private API provider
-  final _apiProvider = ApiProvider();
-  
-  // ✅ Use final for observables
-  final RxList<Item> items = <Item>[].obs;
-  final RxBool isLoading = false.obs;
-  
-  // ✅ Clear method names
-  Future<void> fetchItems() async { }
-  void deleteItem(int id) { }
-  
-  // ✅ Proper error handling
-  Future<void> loadData() async {
     try {
-      isLoading.value = true;
-      // load data
+      final result = await _apiService.getArticles();
+      articles.value = result;
     } catch (e) {
-      _handleError(e);
+      errorMessage.value = 'Failed to load: $e';
+      Get.snackbar('Error', errorMessage.value);
     } finally {
       isLoading.value = false;
     }
   }
   
-  // ✅ Private helper methods
-  void _handleError(dynamic error) {
-    Get.snackbar('Error', error.toString());
+  // ✅ Business logic untuk filter
+  void filterByCategory(String category) {
+    // Logic untuk filter
+    fetchArticles(); // Reload dengan filter
   }
   
-  // ✅ Cleanup in onClose
+  // ✅ Cleanup
   @override
   void onClose() {
-    // dispose resources
+    // Dispose resources
     super.onClose();
   }
 }
 ```
 
-### 2. View Best Practices
+**✅ Yang BOLEH di Controller:**
+- State management (.obs variables)
+- Business logic methods
+- Call services
+- Handle user actions
+- Validations
+- Lifecycle management
+
+**❌ Yang TIDAK BOLEH di Controller:**
+- UI widgets (Widget, Container, Text, dll)
+- Direct HTTP calls (gunakan Service)
+- BuildContext
+- setState()
+
+---
+
+### 4. VIEW Layer
+
+**Lokasi:** `lib/views/`
+
+View hanya UI, tidak ada business logic.
 
 ```dart
-class GoodView extends GetView<GoodController> {
-  // ✅ Use GetView for automatic controller
-  // ✅ Const constructor
-  const GoodView({Key? key}) : super(key: key);
+// views/home_view.dart
+class HomeView extends GetView<HomeController> {
+  const HomeView({Key? key}) : super(key: key);
   
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        children: [
-          // ✅ Obx only on changing parts
-          Obx(() => controller.isLoading.value
-            ? CircularProgressIndicator()
-            : ItemList()
+      appBar: AppBar(
+        title: Text('News App'),
+        actions: [
+          IconButton(
+            // ✅ Trigger controller method
+            onPressed: controller.fetchArticles,
+            icon: Icon(Icons.refresh),
           ),
-          
-          // ✅ Separate widgets
-          _buildStaticHeader(),
-          _buildFooter(),
+        ],
+      ),
+      body: Obx(() {
+        // ✅ Observe state dan rebuild otomatis
+        if (controller.isLoading.value) {
+          return Center(child: CircularProgressIndicator());
+        }
+        
+        if (controller.errorMessage.isNotEmpty) {
+          return _buildErrorWidget();
+        }
+        
+        return ListView.builder(
+          itemCount: controller.articles.length,
+          itemBuilder: (context, index) {
+            return _buildArticleCard(controller.articles[index]);
+          },
+        );
+      }),
+    );
+  }
+  
+  // ✅ Extract widgets untuk readability
+  Widget _buildErrorWidget() {
+    return Center(
+      child: Column(
+        children: [
+          Text(controller.errorMessage.value),
+          ElevatedButton(
+            onPressed: controller.fetchArticles,
+            child: Text('Retry'),
+          ),
         ],
       ),
     );
   }
   
-  // ✅ Extract widgets for readability
-  Widget _buildStaticHeader() {
-    return Container(/* ... */);
+  Widget _buildArticleCard(ArticleModel article) {
+    return Card(
+      child: ListTile(
+        title: Text(article.title),
+        subtitle: Text(article.description ?? ''),
+        onTap: () {
+          // ✅ Navigate dengan data
+          Get.toNamed('/detail', arguments: article);
+        },
+      ),
+    );
   }
 }
 ```
 
-### 3. Performance Tips
+**✅ Yang BOLEH di View:**
+- Build widgets
+- Display data dari controller
+- Trigger controller methods (onTap, onChanged)
+- Navigation
+- Extract widgets (_buildXxx methods)
+
+**❌ Yang TIDAK BOLEH di View:**
+- Business logic
+- API calls
+- State management
+- Data processing
+
+---
+
+### 5. ROUTES Layer
+
+**Lokasi:** `lib/routes/`
+
+Routes mengelola navigasi dan dependency injection.
+
+**app_routes.dart** - Konstanta route names:
+```dart
+class AppRoutes {
+  static const String home = '/home';
+  static const String detail = '/detail';
+  static const String profile = '/profile';
+}
+```
+
+**app_pages.dart** - Configuration:
+```dart
+class AppPages {
+  static const initial = AppRoutes.home;
+  
+  static final routes = [
+    GetPage(
+      name: AppRoutes.home,
+      page: () => HomeView(),
+      binding: BindingsBuilder(() {
+        // Dependency injection
+        Get.lazyPut(() => HomeController());
+      }),
+    ),
+    GetPage(
+      name: AppRoutes.detail,
+      page: () => DetailView(),
+      binding: BindingsBuilder(() {
+        Get.lazyPut(() => DetailController());
+      }),
+    ),
+  ];
+}
+```
+
+---
+
+## 🔄 Data Flow dalam MVC + GetX
+
+### Skenario: User Tap Refresh Button
+
+```
+1. USER ACTION (View)
+   User tap refresh button
+   ↓
+   onPressed: controller.fetchArticles
+
+2. CONTROLLER
+   HomeController.fetchArticles()
+   ↓
+   isLoading.value = true  (State update)
+   ↓
+   Call service
+
+3. SERVICE
+   NewsApiService.getArticles()
+   ↓
+   HTTP GET request ke API
+   ↓
+   Receive JSON response
+   ↓
+   Parse ke List<ArticleModel>
+   ↓
+   Return ke Controller
+
+4. CONTROLLER
+   articles.value = result  (State update)
+   ↓
+   isLoading.value = false
+   
+5. VIEW (Auto Rebuild)
+   Obx() detect state change
+   ↓
+   Rebuild ListView dengan data baru
+   ↓
+   User lihat updated articles
+```
+
+---
+
+## 🎓 Konsep GetX Mendalam
+
+### 1. Reactive State Management
+
+#### Observable Variables (.obs)
 
 ```dart
-// ❌ Bad: Wrap entire screen
+// Primitive types
+final count = 0.obs;
+final name = ''.obs;
+final isActive = false.obs;
+
+// Collections
+final items = <String>[].obs;
+final users = <User>[].obs;
+
+// Custom objects
+final article = ArticleModel().obs;
+
+// Update values
+count.value = 10;
+items.add('New item');
+article.update((val) {
+  val?.title = 'New Title';
+});
+```
+
+#### Obx() Widget
+
+```dart
+// Auto-rebuild ketika observable berubah
+Obx(() => Text('Count: ${controller.count.value}'))
+
+// Multiple observables
+Obx(() => Column(
+  children: [
+    Text('Name: ${controller.name.value}'),
+    Text('Count: ${controller.count.value}'),
+  ],
+))
+```
+
+**💡 Performance Tip:**
+```dart
+// ❌ BAD: Wrap entire screen
 Obx(() => Scaffold(
   body: Column(
     children: [
-      Text('Static'),
-      Text('Static'),
-      Text('${controller.count.value}'),  // Only this needs rebuild
+      Text('Static text'),
+      Text('Static text'),
+      Text('${controller.count.value}'),  // Only this changes
     ],
   ),
 ))
 
-// ✅ Good: Obx only on changing widget
+// ✅ GOOD: Obx only on changing widget
 Scaffold(
   body: Column(
     children: [
-      Text('Static'),
-      Text('Static'),
+      Text('Static text'),
+      Text('Static text'),
       Obx(() => Text('${controller.count.value}')),
     ],
   ),
@@ -479,85 +519,256 @@ Scaffold(
 
 ---
 
-## 📊 Contoh Kasus Penggunaan
-
-### Case 1: Form dengan Validation
+### 2. Controller Lifecycle
 
 ```dart
-class FormController extends GetxController {
-  final name = ''.obs;
-  final email = ''.obs;
-  final isValid = false.obs;
-  
-  void validateForm() {
-    isValid.value = name.value.isNotEmpty && 
-                    email.value.contains('@');
-  }
-  
-  void submit() {
-    if (isValid.value) {
-      // Submit form
-    }
-  }
-}
-
-// View
-Obx(() => ElevatedButton(
-  onPressed: controller.isValid.value 
-    ? controller.submit 
-    : null,
-  child: Text('Submit'),
-))
-```
-
-### Case 2: Multiple Observables
-
-```dart
-class DashboardController extends GetxController {
-  final userName = ''.obs;
-  final userPoints = 0.obs;
-  final notifications = <String>[].obs;
-  
-  // Computed property
-  String get greeting => 'Hello, ${userName.value}!';
-  bool get hasNotifications => notifications.isNotEmpty;
+class MyController extends GetxController {
   
   @override
   void onInit() {
     super.onInit();
-    loadUserData();
-    loadNotifications();
+    print('Controller initialized');
+    // ✅ Initialize variables
+    // ✅ Setup listeners
+    // Called once when controller is created
+  }
+  
+  @override
+  void onReady() {
+    super.onReady();
+    print('Controller ready');
+    // ✅ Called after widget is rendered
+    // ✅ Perfect for API calls
+  }
+  
+  @override
+  void onClose() {
+    super.onClose();
+    print('Controller disposed');
+    // ✅ Cleanup: close streams, dispose
+    // Called when controller is removed
   }
 }
 ```
 
-### Case 3: Workers (Reactions)
+**Best Practices:**
+- Use `onInit()` untuk initialize data
+- Use `onReady()` untuk API calls
+- Use `onClose()` untuk cleanup
+
+---
+
+### 3. Dependency Injection
+
+#### Cara 1: Bindings (Recommended)
 
 ```dart
-class SearchController extends GetxController {
-  final searchQuery = ''.obs;
-  final results = <Item>[].obs;
+// Di app_pages.dart
+GetPage(
+  name: '/home',
+  page: () => HomeView(),
+  binding: BindingsBuilder(() {
+    Get.lazyPut(() => HomeController());
+    Get.lazyPut(() => NewsApiService());
+  }),
+)
+```
+
+**Keuntungan:**
+- ✅ Automatic disposal
+- ✅ Lazy loading
+- ✅ Tied to route lifecycle
+
+#### Cara 2: Manual Injection
+
+```dart
+// Put immediately
+final controller = Get.put(HomeController());
+
+// Lazy put (created when first used)
+Get.lazyPut(() => HomeController());
+
+// Find existing
+final controller = Get.find<HomeController>();
+```
+
+---
+
+### 4. Navigation
+
+#### Basic Navigation
+
+```dart
+// Navigate ke route
+Get.toNamed('/detail');
+
+// Navigate dengan data
+Get.toNamed('/detail', arguments: article);
+
+// Back
+Get.back();
+
+// Replace (can't go back)
+Get.offNamed('/home');
+
+// Clear all dan navigate
+Get.offAllNamed('/login');
+```
+
+#### Passing & Receiving Data
+
+```dart
+// SEND (dari HomeView)
+Get.toNamed('/detail', arguments: {
+  'id': 1,
+  'title': 'News Title',
+  'article': articleObject,
+});
+
+// RECEIVE (di DetailController)
+class DetailController extends GetxController {
+  late int id;
+  late String title;
+  late ArticleModel article;
   
   @override
   void onInit() {
     super.onInit();
-    
-    // Debounce: Wait 800ms after user stops typing
-    debounce(
-      searchQuery,
-      (query) => performSearch(query),
-      time: Duration(milliseconds: 800),
+    final args = Get.arguments as Map;
+    id = args['id'];
+    title = args['title'];
+    article = args['article'];
+  }
+}
+```
+
+---
+
+### 5. GetView vs StatelessWidget
+
+```dart
+// ❌ StatelessWidget - Manual controller access
+class HomeView extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final controller = Get.find<HomeController>();
+    return Text(controller.title);
+  }
+}
+
+// ✅ GetView - Automatic controller injection
+class HomeView extends GetView<HomeController> {
+  @override
+  Widget build(BuildContext context) {
+    // Direct access to controller
+    return Text(controller.title);
+  }
+}
+```
+
+---
+
+## 💡 Best Practices MVC + GetX
+
+### ✅ DO (Lakukan)
+
+**1. Separation of Concerns**
+```dart
+// ✅ GOOD
+// Model: Hanya data
+class Article {
+  final String title;
+}
+
+// Service: Hanya API
+class ApiService {
+  Future<List<Article>> fetch() { }
+}
+
+// Controller: Business logic + state
+class HomeController extends GetxController {
+  final articles = <Article>[].obs;
+  void load() { }
+}
+
+// View: Hanya UI
+class HomeView extends GetView<HomeController> {
+  Widget build() { }
+}
+```
+
+**2. Use Reactive State**
+```dart
+// ✅ GOOD: Reactive
+final count = 0.obs;
+count.value++;
+
+// ❌ BAD: Non-reactive
+int count = 0;
+count++;
+update(); // Manual update
+```
+
+**3. Proper Error Handling**
+```dart
+// ✅ GOOD
+try {
+  final result = await apiService.fetch();
+  articles.value = result;
+} on TimeoutException {
+  errorMessage.value = 'Timeout';
+} on SocketException {
+  errorMessage.value = 'No internet';
+} catch (e) {
+  errorMessage.value = 'Error: $e';
+}
+```
+
+**4. Extract Widgets**
+```dart
+// ✅ GOOD
+Widget _buildHeader() {
+  return Container(...);
+}
+
+Widget _buildBody() {
+  return Column(...);
+}
+```
+
+---
+
+### ❌ DON'T (Jangan)
+
+```dart
+// ❌ JANGAN taruh business logic di View
+class HomeView extends GetView<HomeController> {
+  Widget build() {
+    return ElevatedButton(
+      onPressed: () async {
+        // ❌ BAD: Business logic di view
+        final result = await http.get(...);
+        controller.articles.value = result;
+      },
     );
+  }
+}
+
+// ❌ JANGAN taruh UI di Controller
+class HomeController extends GetxController {
+  Widget buildButton() {  // ❌ BAD
+    return ElevatedButton(...);
+  }
+}
+
+// ❌ JANGAN direct HTTP di Controller
+class HomeController extends GetxController {
+  Future<void> fetch() async {
+    // ❌ BAD: Direct HTTP
+    final response = await http.get(...);
     
-    // Ever: React immediately to changes
-    ever(searchQuery, (query) {
-      print('Searching for: $query');
-    });
-    
-    // Once: React only once
-    once(searchQuery, (query) {
-      print('First search: $query');
-    });
+    // ✅ GOOD: Use service
+    final result = await apiService.fetch();
   }
 }
 ```
@@ -566,19 +777,27 @@ class SearchController extends GetxController {
 
 ## 🎯 Kesimpulan
 
-GetX menyediakan cara yang **simple**, **powerful**, dan **productive** untuk:
-- ✅ Manage state dengan reactive programming
-- ✅ Inject dependencies dengan mudah
-- ✅ Navigate antar halaman dengan clean code
-- ✅ Decouple view dan business logic
+### Keuntungan MVC + GetX:
 
-**Ingat kunci utama:**
-1. Gunakan `.obs` untuk reactive variables
-2. Wrap dengan `Obx()` untuk auto-rebuild
-3. Extend `GetxController` untuk logic
-4. Use `GetView<T>` untuk views
-5. Setup routes dengan `GetPage` dan `Bindings`
+1. **Clear Structure** - Setiap komponen punya tanggung jawab jelas
+2. **Easy Testing** - Mudah test masing-masing layer
+3. **Maintainable** - Mudah maintain dan debug
+4. **Scalable** - Mudah dikembangkan
+5. **Readable** - Code mudah dibaca dan dipahami
+
+### Kapan Menggunakan MVC + GetX:
+
+✅ **COCOK untuk:**
+- Small to medium apps
+- Apps dengan struktur jelas
+- Team dengan developer berbeda skill level
+- Prototyping dan MVP
+- Learning Flutter
+
+❌ **KURANG COCOK untuk:**
+- Very large enterprise apps (consider Clean Architecture)
+- Apps dengan complex business rules (consider BLoC)
 
 ---
 
-**Happy Coding with GetX! 🚀**
+**Happy Coding dengan MVC + GetX! 🚀**

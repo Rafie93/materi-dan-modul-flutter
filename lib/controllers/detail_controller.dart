@@ -1,7 +1,7 @@
 import 'package:get/get.dart';
-import '../../../data/models/article_model.dart';
+import '../models/article_model.dart';
 
-/// Controller untuk Detail Page
+/// Controller untuk Detail Page (Menggunakan konsep MVC)
 class DetailController extends GetxController {
   // Article yang akan ditampilkan di detail page
   late ArticleModel article;

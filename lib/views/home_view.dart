@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../controllers/home_controller.dart';
-import '../../../core/values/app_colors.dart';
-import '../../../core/utils/date_formatter.dart';
-import '../../../routes/app_routes.dart';
+import '../utils/app_colors.dart';
+import '../utils/date_formatter.dart';
+import '../routes/app_routes.dart';
 
-/// View untuk Home Page
+/// View untuk Home Page (Menggunakan konsep MVC)
 /// Menampilkan list berita dengan kategori
 class HomeView extends GetView<HomeController> {
   const HomeView({Key? key}) : super(key: key);
@@ -15,7 +15,7 @@ class HomeView extends GetView<HomeController> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('News App'),
+        title: const Text('News App - MVC'),
         backgroundColor: AppColors.primary,
         elevation: 0,
         actions: [

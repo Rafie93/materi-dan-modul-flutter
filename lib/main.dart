@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'app/routes/app_pages.dart';
-import 'app/core/values/app_colors.dart';
+import 'routes/app_pages.dart';
+import 'utils/app_colors.dart';
 
 void main() {
   runApp(const MyApp());
@@ -13,7 +13,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
-      title: 'News App GetX',
+      title: 'News App - MVC GetX',
       debugShowCheckedModeBanner: false,
       
       // Theme configuration

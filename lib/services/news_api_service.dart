@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/news_response_model.dart';
 
-/// Provider untuk menghandle API calls ke News API
+/// Service untuk menghandle API calls ke News API
 /// Menggunakan package http untuk melakukan request
-class NewsApiProvider {
+class NewsApiService {
   // Base URL News API
   static const String _baseUrl = 'https://newsapi.org/v2';
   

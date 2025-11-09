@@ -1,43 +1,48 @@
-# 💻 Contoh Kode dan Use Cases
+# 💻 Contoh Kode MVC + GetX
 
-Dokumen ini berisi contoh-contoh kode praktis untuk berbagai skenario dalam aplikasi News App.
+Dokumen ini berisi contoh-contoh kode praktis untuk berbagai skenario dalam aplikasi News App dengan arsitektur MVC.
 
 ---
 
 ## 📋 Table of Contents
 
-1. [Model & Data Parsing](#1-model--data-parsing)
-2. [API Calls](#2-api-calls)
+1. [Model Examples](#1-model-examples)
+2. [Service Examples](#2-service-examples)
 3. [Controller Examples](#3-controller-examples)
-4. [UI Examples](#4-ui-examples)
-5. [Navigation](#5-navigation)
-6. [State Management](#6-state-management)
+4. [View Examples](#4-view-examples)
+5. [Navigation Examples](#5-navigation-examples)
+6. [State Management Patterns](#6-state-management-patterns)
 7. [Error Handling](#7-error-handling)
 
 ---
 
-## 1. Model & Data Parsing
+## 1. Model Examples
 
-### Membuat Model Sederhana
+### Basic Model dengan JSON Parsing
+
+**File:** `lib/models/article_model.dart`
 
 ```dart
-class User {
+class ArticleModel {
   final int id;
-  final String name;
-  final String? email;  // Nullable
+  final String title;
+  final String? description;  // Nullable
+  final DateTime createdAt;
   
-  User({
+  ArticleModel({
     required this.id,
-    required this.name,
-    this.email,
+    required this.title,
+    this.description,
+    required this.createdAt,
   });
   
   // Parsing dari JSON
-  factory User.fromJson(Map<String, dynamic> json) {
-    return User(
+  factory ArticleModel.fromJson(Map<String, dynamic> json) {
+    return ArticleModel(
       id: json['id'] as int,
-      name: json['name'] as String,
-      email: json['email'] as String?,
+      title: json['title'] as String? ?? 'No Title',
+      description: json['description'] as String?,
+      createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
   
@@ -45,8 +50,9 @@ class User {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'name': name,
-      'email': email,
+      'title': title,
+      'description': description,
+      'created_at': createdAt.toIso8601String(),
     };
   }
 }
@@ -55,20 +61,30 @@ class User {
 ### Model dengan Nested Object
 
 ```dart
-class Article {
+// models/article_model.dart
+class ArticleModel {
   final String title;
   final Source source;  // Nested object
+  final List<Tag> tags; // List of objects
   
-  Article({required this.title, required this.source});
+  ArticleModel({
+    required this.title,
+    required this.source,
+    required this.tags,
+  });
   
-  factory Article.fromJson(Map<String, dynamic> json) {
-    return Article(
+  factory ArticleModel.fromJson(Map<String, dynamic> json) {
+    return ArticleModel(
       title: json['title'] as String,
       source: Source.fromJson(json['source'] as Map<String, dynamic>),
+      tags: (json['tags'] as List<dynamic>)
+          .map((tag) => Tag.fromJson(tag as Map<String, dynamic>))
+          .toList(),
     );
   }
 }
 
+// models/source_model.dart
 class Source {
   final String id;
   final String name;
@@ -84,101 +100,204 @@ class Source {
 }
 ```
 
-### Parsing List dari JSON
+### Model dengan Validation
 
 ```dart
-// JSON response:
-// { "articles": [...] }
-
-final jsonData = json.decode(response.body);
-final articlesList = (jsonData['articles'] as List)
-    .map((item) => Article.fromJson(item as Map<String, dynamic>))
-    .toList();
-```
-
----
-
-## 2. API Calls
-
-### Basic GET Request
-
-```dart
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-
-Future<List<Article>> fetchArticles() async {
-  final url = Uri.parse('https://api.example.com/articles');
+// models/user_model.dart
+class UserModel {
+  final String email;
+  final String password;
   
-  try {
-    final response = await http.get(url);
-    
-    if (response.statusCode == 200) {
-      final jsonData = json.decode(response.body);
-      final articles = (jsonData['articles'] as List)
-          .map((item) => Article.fromJson(item))
-          .toList();
-      return articles;
-    } else {
-      throw Exception('Failed: ${response.statusCode}');
-    }
-  } catch (e) {
-    throw Exception('Error: $e');
+  UserModel({required this.email, required this.password});
+  
+  // Validation methods
+  bool get isValidEmail {
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+  }
+  
+  bool get isValidPassword {
+    return password.length >= 8;
+  }
+  
+  String? validateEmail() {
+    if (email.isEmpty) return 'Email tidak boleh kosong';
+    if (!isValidEmail) return 'Format email tidak valid';
+    return null;
+  }
+  
+  String? validatePassword() {
+    if (password.isEmpty) return 'Password tidak boleh kosong';
+    if (password.length < 8) return 'Password minimal 8 karakter';
+    return null;
   }
 }
 ```
 
-### GET with Query Parameters
+---
+
+## 2. Service Examples
+
+### Basic API Service
+
+**File:** `lib/services/news_api_service.dart`
 
 ```dart
-Future<List<Article>> searchArticles(String query, {int page = 1}) async {
-  final url = Uri.parse('https://api.example.com/search').replace(
-    queryParameters: {
-      'q': query,
-      'page': page.toString(),
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../models/article_model.dart';
+import '../models/news_response_model.dart';
+
+class NewsApiService {
+  static const String _baseUrl = 'https://api.example.com';
+  static const String _apiKey = 'YOUR_API_KEY';
+  
+  // GET Request
+  Future<List<ArticleModel>> getArticles() async {
+    try {
+      final url = Uri.parse('$_baseUrl/articles?apiKey=$_apiKey');
+      final response = await http.get(url);
+      
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        return (jsonData['articles'] as List)
+            .map((item) => ArticleModel.fromJson(item))
+            .toList();
+      } else {
+        throw Exception('Failed: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error: $e');
+    }
+  }
+  
+  // GET with Parameters
+  Future<NewsResponseModel> getTopHeadlines({
+    String country = 'us',
+    String? category,
+    int page = 1,
+  }) async {
+    final queryParams = {
+      'country': country,
       'apiKey': _apiKey,
-    },
-  );
-  
-  final response = await http.get(url);
-  // ... parse response
-}
-```
-
-### POST Request
-
-```dart
-Future<bool> createArticle(Article article) async {
-  final url = Uri.parse('https://api.example.com/articles');
-  
-  final response = await http.post(
-    url,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $_token',
-    },
-    body: json.encode(article.toJson()),
-  );
-  
-  return response.statusCode == 201;
-}
-```
-
-### Request dengan Timeout
-
-```dart
-Future<List<Article>> fetchWithTimeout() async {
-  final url = Uri.parse('https://api.example.com/articles');
-  
-  try {
-    final response = await http
-        .get(url)
-        .timeout(Duration(seconds: 10));
+      'page': page.toString(),
+    };
     
-    // ... process response
-  } on TimeoutException {
-    throw Exception('Request timeout');
-  } catch (e) {
-    throw Exception('Error: $e');
+    if (category != null) {
+      queryParams['category'] = category;
+    }
+    
+    final url = Uri.parse('$_baseUrl/top-headlines').replace(
+      queryParameters: queryParams,
+    );
+    
+    final response = await http.get(url);
+    
+    if (response.statusCode == 200) {
+      return NewsResponseModel.fromJson(json.decode(response.body));
+    } else {
+      throw Exception('Failed to load');
+    }
+  }
+}
+```
+
+### POST Request Service
+
+```dart
+// services/article_service.dart
+class ArticleService {
+  static const String _baseUrl = 'https://api.example.com';
+  
+  // POST - Create Article
+  Future<ArticleModel> createArticle(ArticleModel article) async {
+    final url = Uri.parse('$_baseUrl/articles');
+    
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $_token',
+      },
+      body: json.encode(article.toJson()),
+    );
+    
+    if (response.statusCode == 201) {
+      return ArticleModel.fromJson(json.decode(response.body));
+    } else {
+      throw Exception('Failed to create');
+    }
+  }
+  
+  // PUT - Update Article
+  Future<ArticleModel> updateArticle(int id, ArticleModel article) async {
+    final url = Uri.parse('$_baseUrl/articles/$id');
+    
+    final response = await http.put(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(article.toJson()),
+    );
+    
+    if (response.statusCode == 200) {
+      return ArticleModel.fromJson(json.decode(response.body));
+    } else {
+      throw Exception('Failed to update');
+    }
+  }
+  
+  // DELETE - Delete Article
+  Future<bool> deleteArticle(int id) async {
+    final url = Uri.parse('$_baseUrl/articles/$id');
+    final response = await http.delete(url);
+    return response.statusCode == 204;
+  }
+}
+```
+
+### Service dengan Timeout dan Retry
+
+```dart
+// services/api_service.dart
+import 'dart:async';
+import 'dart:io';
+
+class ApiService {
+  static const int _timeoutSeconds = 10;
+  static const int _maxRetries = 3;
+  
+  Future<T> getWithRetry<T>(
+    String url,
+    T Function(Map<String, dynamic>) fromJson,
+  ) async {
+    int retryCount = 0;
+    
+    while (retryCount < _maxRetries) {
+      try {
+        final response = await http
+            .get(Uri.parse(url))
+            .timeout(Duration(seconds: _timeoutSeconds));
+        
+        if (response.statusCode == 200) {
+          return fromJson(json.decode(response.body));
+        } else if (response.statusCode >= 500) {
+          // Server error, retry
+          retryCount++;
+          await Future.delayed(Duration(seconds: retryCount));
+          continue;
+        } else {
+          throw Exception('Error: ${response.statusCode}');
+        }
+      } on TimeoutException {
+        retryCount++;
+        if (retryCount >= _maxRetries) {
+          throw Exception('Request timeout after $retryCount retries');
+        }
+      } on SocketException {
+        throw Exception('No internet connection');
+      }
+    }
+    
+    throw Exception('Failed after $_maxRetries retries');
   }
 }
 ```
@@ -189,10 +308,21 @@ Future<List<Article>> fetchWithTimeout() async {
 
 ### Basic Controller
 
+**File:** `lib/controllers/home_controller.dart`
+
 ```dart
-class ArticleController extends GetxController {
-  final articles = <Article>[].obs;
-  final isLoading = false.obs;
+import 'package:get/get.dart';
+import '../models/article_model.dart';
+import '../services/news_api_service.dart';
+
+class HomeController extends GetxController {
+  // Service
+  final NewsApiService _apiService = NewsApiService();
+  
+  // Observable state
+  final RxList<ArticleModel> articles = <ArticleModel>[].obs;
+  final RxBool isLoading = false.obs;
+  final RxString errorMessage = ''.obs;
   
   @override
   void onInit() {
@@ -202,58 +332,23 @@ class ArticleController extends GetxController {
   
   Future<void> fetchArticles() async {
     isLoading.value = true;
-    try {
-      // API call
-      final result = await _apiProvider.getArticles();
-      articles.value = result;
-    } catch (e) {
-      Get.snackbar('Error', e.toString());
-    } finally {
-      isLoading.value = false;
-    }
-  }
-}
-```
-
-### Controller dengan Multiple States
-
-```dart
-class NewsController extends GetxController {
-  // States
-  final articles = <Article>[].obs;
-  final isLoading = false.obs;
-  final errorMessage = ''.obs;
-  final selectedCategory = 'general'.obs;
-  final searchQuery = ''.obs;
-  
-  // Computed properties
-  bool get hasArticles => articles.isNotEmpty;
-  bool get hasError => errorMessage.isNotEmpty;
-  
-  // Methods
-  Future<void> fetchNews() async {
-    isLoading.value = true;
     errorMessage.value = '';
     
     try {
-      final result = await _apiProvider.getNews(
-        category: selectedCategory.value,
-      );
+      final result = await _apiService.getArticles();
       articles.value = result;
     } catch (e) {
       errorMessage.value = e.toString();
+      Get.snackbar('Error', errorMessage.value);
     } finally {
       isLoading.value = false;
     }
   }
   
-  void changeCategory(String category) {
-    selectedCategory.value = category;
-    fetchNews();
-  }
-  
-  void clearError() {
-    errorMessage.value = '';
+  @override
+  void onClose() {
+    // Cleanup
+    super.onClose();
   }
 }
 ```
@@ -261,40 +356,47 @@ class NewsController extends GetxController {
 ### Controller dengan Pagination
 
 ```dart
-class PaginatedController extends GetxController {
-  final articles = <Article>[].obs;
-  final isLoading = false.obs;
-  final isLoadingMore = false.obs;
-  final currentPage = 1.obs;
-  final hasMore = true.obs;
+// controllers/article_list_controller.dart
+class ArticleListController extends GetxController {
+  final NewsApiService _apiService = NewsApiService();
+  
+  final RxList<ArticleModel> articles = <ArticleModel>[].obs;
+  final RxBool isLoading = false.obs;
+  final RxBool isLoadingMore = false.obs;
+  final RxInt currentPage = 1.obs;
+  final RxBool hasMore = true.obs;
   
   @override
   void onInit() {
     super.onInit();
-    fetchArticles();
+    loadArticles();
   }
   
-  Future<void> fetchArticles() async {
+  // Load first page
+  Future<void> loadArticles() async {
     if (isLoading.value) return;
     
     isLoading.value = true;
     try {
-      final result = await _apiProvider.getArticles(page: 1);
+      final result = await _apiService.getArticles(page: 1);
       articles.value = result;
       currentPage.value = 1;
-      hasMore.value = result.length >= 20; // Assuming 20 per page
+      hasMore.value = result.length >= 20;
+    } catch (e) {
+      Get.snackbar('Error', e.toString());
     } finally {
       isLoading.value = false;
     }
   }
   
+  // Load next page
   Future<void> loadMore() async {
     if (isLoadingMore.value || !hasMore.value) return;
     
     isLoadingMore.value = true;
     try {
       final nextPage = currentPage.value + 1;
-      final result = await _apiProvider.getArticles(page: nextPage);
+      final result = await _apiService.getArticles(page: nextPage);
       
       if (result.isEmpty) {
         hasMore.value = false;
@@ -302,9 +404,16 @@ class PaginatedController extends GetxController {
         articles.addAll(result);
         currentPage.value = nextPage;
       }
+    } catch (e) {
+      Get.snackbar('Error', e.toString());
     } finally {
       isLoadingMore.value = false;
     }
+  }
+  
+  // Pull to refresh
+  Future<void> refresh() async {
+    await loadArticles();
   }
 }
 ```
@@ -312,34 +421,116 @@ class PaginatedController extends GetxController {
 ### Controller dengan Search Debounce
 
 ```dart
+// controllers/search_controller.dart
+import 'package:get/get.dart';
+
 class SearchController extends GetxController {
-  final searchResults = <Article>[].obs;
-  final searchQuery = ''.obs;
-  final isSearching = false.obs;
+  final NewsApiService _apiService = NewsApiService();
+  
+  final RxList<ArticleModel> searchResults = <ArticleModel>[].obs;
+  final RxString searchQuery = ''.obs;
+  final RxBool isSearching = false.obs;
   
   @override
   void onInit() {
     super.onInit();
     
-    // Debounce: Tunggu 500ms setelah user berhenti mengetik
+    // Debounce: Tunggu 500ms setelah user berhenti typing
     debounce(
       searchQuery,
       (query) {
         if (query.toString().isNotEmpty) {
           performSearch(query.toString());
+        } else {
+          searchResults.clear();
         }
       },
       time: Duration(milliseconds: 500),
     );
   }
   
+  void updateQuery(String query) {
+    searchQuery.value = query;
+  }
+  
   Future<void> performSearch(String query) async {
     isSearching.value = true;
     try {
-      final results = await _apiProvider.search(query);
+      final results = await _apiService.searchArticles(query);
       searchResults.value = results;
+    } catch (e) {
+      Get.snackbar('Error', 'Search failed: $e');
     } finally {
       isSearching.value = false;
+    }
+  }
+  
+  void clearSearch() {
+    searchQuery.value = '';
+    searchResults.clear();
+  }
+}
+```
+
+### Controller dengan Form Validation
+
+```dart
+// controllers/login_controller.dart
+class LoginController extends GetxController {
+  final RxString email = ''.obs;
+  final RxString password = ''.obs;
+  final RxBool isLoading = false.obs;
+  final RxString emailError = ''.obs;
+  final RxString passwordError = ''.obs;
+  
+  // Computed property
+  bool get isValid => emailError.isEmpty && passwordError.isEmpty;
+  
+  void updateEmail(String value) {
+    email.value = value;
+    validateEmail();
+  }
+  
+  void updatePassword(String value) {
+    password.value = value;
+    validatePassword();
+  }
+  
+  void validateEmail() {
+    if (email.value.isEmpty) {
+      emailError.value = 'Email tidak boleh kosong';
+    } else if (!GetUtils.isEmail(email.value)) {
+      emailError.value = 'Format email tidak valid';
+    } else {
+      emailError.value = '';
+    }
+  }
+  
+  void validatePassword() {
+    if (password.value.isEmpty) {
+      passwordError.value = 'Password tidak boleh kosong';
+    } else if (password.value.length < 8) {
+      passwordError.value = 'Password minimal 8 karakter';
+    } else {
+      passwordError.value = '';
+    }
+  }
+  
+  Future<void> login() async {
+    validateEmail();
+    validatePassword();
+    
+    if (!isValid) return;
+    
+    isLoading.value = true;
+    try {
+      // Call login API
+      await Future.delayed(Duration(seconds: 2)); // Simulate API
+      Get.offAllNamed('/home');
+    } catch (e) {
+      Get.snackbar('Error', 'Login failed');
+    } finally {
+      isLoading.value = false;
     }
   }
 }
@@ -347,309 +538,329 @@ class SearchController extends GetxController {
 
 ---
 
-## 4. UI Examples
+## 4. View Examples
 
-### Loading State
+### Basic View dengan GetView
 
-```dart
-// Simple loading
-Obx(() => controller.isLoading.value
-    ? Center(child: CircularProgressIndicator())
-    : ArticleList()
-)
-
-// Loading overlay
-Stack(
-  children: [
-    ArticleList(),
-    Obx(() => controller.isLoading.value
-        ? Container(
-            color: Colors.black54,
-            child: Center(child: CircularProgressIndicator()),
-          )
-        : SizedBox.shrink()
-    ),
-  ],
-)
-```
-
-### Empty State
+**File:** `lib/views/home_view.dart`
 
 ```dart
-Obx(() {
-  if (controller.isLoading.value) {
-    return Center(child: CircularProgressIndicator());
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import '../controllers/home_controller.dart';
+
+class HomeView extends GetView<HomeController> {
+  const HomeView({Key? key}) : super(key: key);
+  
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Home'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh),
+            onPressed: controller.fetchArticles,
+          ),
+        ],
+      ),
+      body: Obx(() {
+        if (controller.isLoading.value) {
+          return Center(child: CircularProgressIndicator());
+        }
+        
+        if (controller.errorMessage.isNotEmpty) {
+          return _buildErrorWidget();
+        }
+        
+        if (controller.articles.isEmpty) {
+          return _buildEmptyWidget();
+        }
+        
+        return _buildArticleList();
+      }),
+    );
   }
   
-  if (controller.articles.isEmpty) {
+  Widget _buildArticleList() {
+    return ListView.builder(
+      itemCount: controller.articles.length,
+      itemBuilder: (context, index) {
+        final article = controller.articles[index];
+        return ListTile(
+          title: Text(article.title),
+          subtitle: Text(article.description ?? ''),
+          onTap: () {
+            Get.toNamed('/detail', arguments: article);
+          },
+        );
+      },
+    );
+  }
+  
+  Widget _buildErrorWidget() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.inbox, size: 80, color: Colors.grey),
+          Icon(Icons.error, size: 60, color: Colors.red),
           SizedBox(height: 16),
-          Text('Tidak ada berita'),
-          SizedBox(height: 8),
+          Text(controller.errorMessage.value),
+          SizedBox(height: 16),
           ElevatedButton(
-            onPressed: controller.fetchNews,
-            child: Text('Muat Ulang'),
+            onPressed: controller.fetchArticles,
+            child: Text('Retry'),
           ),
         ],
       ),
     );
   }
   
-  return ArticleList();
-})
-```
-
-### Error State
-
-```dart
-Obx(() {
-  if (controller.errorMessage.isNotEmpty) {
+  Widget _buildEmptyWidget() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.error_outline, size: 80, color: Colors.red),
+          Icon(Icons.inbox, size: 60, color: Colors.grey),
           SizedBox(height: 16),
-          Text(
-            controller.errorMessage.value,
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: () {
-              controller.clearError();
-              controller.fetchNews();
+          Text('Tidak ada data'),
+        ],
+      ),
+    );
+  }
+}
+```
+
+### View dengan Pull to Refresh
+
+```dart
+// views/article_list_view.dart
+class ArticleListView extends GetView<ArticleListController> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Articles')),
+      body: Obx(() {
+        if (controller.isLoading.value) {
+          return Center(child: CircularProgressIndicator());
+        }
+        
+        return RefreshIndicator(
+          onRefresh: controller.refresh,
+          child: ListView.builder(
+            itemCount: controller.articles.length + 1,
+            itemBuilder: (context, index) {
+              // Load more indicator
+              if (index == controller.articles.length) {
+                if (controller.isLoadingMore.value) {
+                  return Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                }
+                return SizedBox.shrink();
+              }
+              
+              // Trigger load more
+              if (index == controller.articles.length - 3) {
+                controller.loadMore();
+              }
+              
+              final article = controller.articles[index];
+              return ArticleCard(article: article);
             },
-            child: Text('Coba Lagi'),
+          ),
+        );
+      }),
+    );
+  }
+}
+```
+
+### View dengan Search
+
+```dart
+// views/search_view.dart
+class SearchView extends GetView<SearchController> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: TextField(
+          decoration: InputDecoration(
+            hintText: 'Search...',
+            border: InputBorder.none,
+          ),
+          onChanged: controller.updateQuery,
+        ),
+        actions: [
+          Obx(() => controller.searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: Icon(Icons.clear),
+                  onPressed: controller.clearSearch,
+                )
+              : SizedBox.shrink()
           ),
         ],
       ),
+      body: Obx(() {
+        if (controller.isSearching.value) {
+          return Center(child: CircularProgressIndicator());
+        }
+        
+        if (controller.searchQuery.isEmpty) {
+          return Center(child: Text('Enter search query'));
+        }
+        
+        if (controller.searchResults.isEmpty) {
+          return Center(child: Text('No results found'));
+        }
+        
+        return ListView.builder(
+          itemCount: controller.searchResults.length,
+          itemBuilder: (context, index) {
+            final article = controller.searchResults[index];
+            return ArticleCard(article: article);
+          },
+        );
+      }),
     );
   }
-  
-  return ArticleList();
-})
-```
-
-### Pull to Refresh
-
-```dart
-RefreshIndicator(
-  onRefresh: controller.fetchNews,
-  child: Obx(() => ListView.builder(
-    itemCount: controller.articles.length,
-    itemBuilder: (context, index) {
-      return ArticleCard(controller.articles[index]);
-    },
-  )),
-)
-```
-
-### Infinite Scroll (Load More)
-
-```dart
-ListView.builder(
-  itemCount: controller.articles.length + 1,
-  itemBuilder: (context, index) {
-    // Load more indicator di akhir list
-    if (index == controller.articles.length) {
-      return Obx(() => controller.isLoadingMore.value
-          ? Center(child: CircularProgressIndicator())
-          : SizedBox.shrink()
-      );
-    }
-    
-    // Load more saat scroll mendekati akhir
-    if (index == controller.articles.length - 3) {
-      controller.loadMore();
-    }
-    
-    return ArticleCard(controller.articles[index]);
-  },
-)
+}
 ```
 
 ---
 
-## 5. Navigation
+## 5. Navigation Examples
 
 ### Basic Navigation
 
 ```dart
-// Navigate ke halaman lain
+// Navigate to another page
 ElevatedButton(
-  onPressed: () => Get.toNamed('/details'),
-  child: Text('Go to Details'),
+  onPressed: () => Get.toNamed('/detail'),
+  child: Text('Go to Detail'),
 )
 
 // Back
-ElevatedButton(
+IconButton(
+  icon: Icon(Icons.arrow_back),
   onPressed: () => Get.back(),
-  child: Text('Back'),
 )
+
+// Replace (can't go back)
+Get.offNamed('/home');
+
+// Clear all and navigate
+Get.offAllNamed('/login');
 ```
 
 ### Passing Data
 
 ```dart
-// Method 1: Arguments
-Get.toNamed('/details', arguments: {
+// Send data
+Get.toNamed('/detail', arguments: {
   'id': article.id,
   'title': article.title,
+  'article': article,
 });
 
-// Receive
-class DetailsController extends GetxController {
-  late int articleId;
-  late String articleTitle;
+// Receive in Controller
+class DetailController extends GetxController {
+  late int id;
+  late String title;
+  late ArticleModel article;
   
   @override
   void onInit() {
     super.onInit();
-    final args = Get.arguments as Map<String, dynamic>;
-    articleId = args['id'];
-    articleTitle = args['title'];
+    final args = Get.arguments as Map;
+    id = args['id'];
+    title = args['title'];
+    article = args['article'];
   }
 }
-
-// Method 2: Pass entire object
-Get.toNamed('/details', arguments: article);
-
-// Receive
-final article = Get.arguments as Article;
 ```
 
 ### Navigation with Result
 
 ```dart
-// Page 1: Navigate dan tunggu result
+// Navigate and wait for result
 final result = await Get.toNamed('/edit', arguments: article);
 if (result != null && result == true) {
-  // Refresh data
-  controller.fetchNews();
+  controller.refresh();
 }
 
-// Page 2: Return result
+// Return result from EditView
 ElevatedButton(
   onPressed: () {
-    // Save changes
+    // Save data...
     Get.back(result: true);
   },
   child: Text('Save'),
 )
 ```
 
-### Replace & Clear Navigation
-
-```dart
-// Replace current page (tidak bisa back)
-Get.offNamed('/home');
-
-// Clear semua dan navigate
-Get.offAllNamed('/login');
-
-// Replace sampai kondisi tertentu
-Get.offNamedUntil('/home', (route) => route.isFirst);
-```
-
 ---
 
-## 6. State Management
-
-### Reactive Variables
-
-```dart
-// Primitive types
-final count = 0.obs;
-final name = 'John'.obs;
-final isActive = true.obs;
-
-// Update
-count.value = 10;
-name.value = 'Jane';
-isActive.value = false;
-
-// Collections
-final items = <String>[].obs;
-items.add('New item');
-items.remove('Old item');
-
-// Custom class
-final user = User().obs;
-user.value = newUser;
-
-// Update property (use update())
-user.update((val) {
-  val?.name = 'New Name';
-});
-```
+## 6. State Management Patterns
 
 ### Workers (Reactions)
 
 ```dart
 class MyController extends GetxController {
   final count = 0.obs;
+  final email = ''.obs;
   
   @override
   void onInit() {
     super.onInit();
     
-    // ever: Dipanggil setiap kali value berubah
+    // ever: Called every time value changes
     ever(count, (value) {
       print('Count changed to: $value');
     });
     
-    // once: Dipanggil hanya sekali saat pertama kali berubah
+    // once: Called only first time
     once(count, (value) {
       print('First change: $value');
     });
     
-    // debounce: Dipanggil setelah user berhenti mengubah value
+    // debounce: Called after user stops changing
     debounce(
-      count,
-      (value) => print('Final value: $value'),
+      email,
+      (value) => print('Search: $value'),
       time: Duration(milliseconds: 500),
     );
     
-    // interval: Dipanggil dengan interval tertentu
+    // interval: Called with interval
     interval(
       count,
-      (value) => print('Interval update: $value'),
+      (value) => print('Interval: $value'),
       time: Duration(seconds: 1),
     );
   }
 }
 ```
 
-### GetBuilder (Alternative)
+### Computed Properties
 
 ```dart
-// Controller
-class CounterController extends GetxController {
-  int count = 0;
+class CartController extends GetxController {
+  final RxList<Item> items = <Item>[].obs;
   
-  void increment() {
-    count++;
-    update(); // Trigger rebuild
+  // Computed property
+  double get totalPrice {
+    return items.fold(0, (sum, item) => sum + item.price);
   }
   
-  void incrementWithId() {
-    count++;
-    update(['counter']); // Update hanya builder dengan id 'counter'
-  }
+  int get itemCount => items.length;
+  
+  bool get isEmpty => items.isEmpty;
+  bool get isNotEmpty => items.isNotEmpty;
 }
-
-// View
-GetBuilder<CounterController>(
-  id: 'counter', // Optional
-  builder: (controller) {
-    return Text('Count: ${controller.count}');
-  },
-)
 ```
 
 ---
@@ -664,49 +875,26 @@ Future<void> fetchData() async {
   errorMessage.value = '';
   
   try {
-    final result = await apiCall();
+    final result = await apiService.fetch();
     data.value = result;
   } on TimeoutException {
-    errorMessage.value = 'Request timeout. Coba lagi.';
+    errorMessage.value = 'Request timeout';
   } on SocketException {
-    errorMessage.value = 'Tidak ada koneksi internet.';
+    errorMessage.value = 'No internet connection';
   } on FormatException {
-    errorMessage.value = 'Format data tidak valid.';
+    errorMessage.value = 'Invalid data format';
   } catch (e) {
-    errorMessage.value = 'Terjadi kesalahan: $e';
+    errorMessage.value = 'Error: $e';
   } finally {
     isLoading.value = false;
   }
 }
 ```
 
-### Custom Error Class
-
-```dart
-class ApiException implements Exception {
-  final String message;
-  final int? statusCode;
-  
-  ApiException(this.message, [this.statusCode]);
-  
-  @override
-  String toString() => message;
-}
-
-// Usage
-throw ApiException('Server error', 500);
-
-// Catch
-try {
-  // ...
-} on ApiException catch (e) {
-  print('API Error: ${e.message} (${e.statusCode})');
-}
-```
-
 ### Global Error Handler
 
 ```dart
+// utils/error_handler.dart
 class ErrorHandler {
   static void handle(dynamic error) {
     String message;
@@ -715,8 +903,8 @@ class ErrorHandler {
       message = 'Request timeout';
     } else if (error is SocketException) {
       message = 'No internet connection';
-    } else if (error is ApiException) {
-      message = error.message;
+    } else if (error is FormatException) {
+      message = 'Invalid data format';
     } else {
       message = 'An error occurred';
     }
@@ -736,58 +924,6 @@ try {
   await fetchData();
 } catch (e) {
   ErrorHandler.handle(e);
-}
-```
-
----
-
-## 🎓 Tips & Best Practices
-
-### 1. Separation of Concerns
-```dart
-// ❌ Bad: Business logic di View
-class BadView extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: () async {
-        final result = await http.get(...);
-        // Process result
-      },
-      child: Text('Fetch'),
-    );
-  }
-}
-
-// ✅ Good: Business logic di Controller
-class GoodView extends GetView<MyController> {
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: controller.fetchData,
-      child: Text('Fetch'),
-    );
-  }
-}
-```
-
-### 2. Const Widgets
-```dart
-// ✅ Use const untuk widget yang tidak berubah
-const Text('Static text');
-const SizedBox(height: 16);
-const Icon(Icons.home);
-```
-
-### 3. Extract Widgets
-```dart
-// ✅ Extract complex widgets untuk readability
-Widget _buildHeader() {
-  return Container(/* ... */);
-}
-
-Widget _buildBody() {
-  return Column(/* ... */);
 }
 ```
 

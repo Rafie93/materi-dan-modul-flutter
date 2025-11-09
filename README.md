@@ -1,8 +1,8 @@
-# 📱 News App dengan GetX State Management
+# 📱 News App dengan GetX - Arsitektur MVC
 
 ## 📚 Materi Pembelajaran: Pemrograman Mobile Flutter
 
-Proyek ini adalah aplikasi berita sederhana yang dibuat dengan **Flutter** dan menggunakan **GetX** sebagai state management. Aplikasi ini mengambil data dari [NewsAPI](https://newsapi.org/) dan menampilkannya dalam format yang menarik.
+Proyek ini adalah aplikasi berita sederhana yang dibuat dengan **Flutter** menggunakan **arsitektur MVC (Model-View-Controller)** dan **GetX** sebagai state management. Aplikasi ini mengambil data dari [NewsAPI](https://newsapi.org/) dan menampilkannya dalam format yang menarik.
 
 ---
 
@@ -10,60 +10,99 @@ Proyek ini adalah aplikasi berita sederhana yang dibuat dengan **Flutter** dan m
 
 Setelah mempelajari proyek ini, Anda akan memahami:
 
-1. **Arsitektur GetX** - Cara mengorganisir project dengan pattern GetX
-2. **State Management** - Mengelola state aplikasi dengan reactive programming
-3. **API Integration** - Mengambil data dari REST API
+1. **Arsitektur MVC** - Cara mengorganisir project dengan pattern MVC yang simple
+2. **State Management GetX** - Mengelola state aplikasi dengan reactive programming
+3. **API Integration** - Mengambil data dari REST API dengan service layer
 4. **Navigation** - Routing dan passing data antar halaman dengan GetX
 5. **UI/UX Best Practices** - Membuat tampilan yang responsif dan user-friendly
 
 ---
 
-## 🏗️ Struktur Project
+## 🏗️ Struktur Project (Arsitektur MVC)
 
 ```
 lib/
-├── app/
-│   ├── core/                    # Core utilities dan constants
-│   │   ├── utils/
-│   │   │   └── date_formatter.dart    # Helper untuk format tanggal
-│   │   └── values/
-│   │       └── app_colors.dart        # Konstanta warna aplikasi
-│   │
-│   ├── data/                    # Layer data (Model & Provider)
-│   │   ├── models/
-│   │   │   ├── article_model.dart           # Model untuk Article
-│   │   │   └── news_response_model.dart     # Model untuk API Response
-│   │   └── providers/
-│   │       └── news_api_provider.dart       # API Service
-│   │
-│   ├── modules/                 # Modules (Fitur aplikasi)
-│   │   ├── home/
-│   │   │   ├── controllers/
-│   │   │   │   └── home_controller.dart     # Controller Home Page
-│   │   │   └── views/
-│   │   │       └── home_view.dart           # UI Home Page
-│   │   └── detail/
-│   │       ├── controllers/
-│   │       │   └── detail_controller.dart   # Controller Detail Page
-│   │       └── views/
-│   │           └── detail_view.dart         # UI Detail Page
-│   │
-│   └── routes/                  # Routing configuration
-│       ├── app_pages.dart       # Definisi GetPages dan Bindings
-│       └── app_routes.dart      # Konstanta nama route
+├── main.dart                      # Entry point aplikasi
 │
-└── main.dart                    # Entry point aplikasi
+├── models/                        # MODEL - Data Structure
+│   ├── article_model.dart         # Model untuk Article
+│   └── news_response_model.dart   # Model untuk API Response
+│
+├── views/                         # VIEW - User Interface
+│   ├── home_view.dart             # UI Home Page
+│   └── detail_view.dart           # UI Detail Page
+│
+├── controllers/                   # CONTROLLER - Business Logic
+│   ├── home_controller.dart       # Logic Home Page
+│   └── detail_controller.dart     # Logic Detail Page
+│
+├── services/                      # SERVICES - Network/API Layer
+│   └── news_api_service.dart      # Service untuk News API
+│
+├── routes/                        # ROUTES - Navigation
+│   ├── app_routes.dart            # Konstanta route names
+│   └── app_pages.dart             # Route configuration
+│
+└── utils/                         # UTILITIES - Helper Classes
+    ├── app_colors.dart            # Color constants
+    └── date_formatter.dart        # Date formatting helper
 ```
 
 ---
 
-## 📖 Penjelasan Arsitektur GetX
+## 📖 Penjelasan Arsitektur MVC + GetX
 
-### 1. **Model (Data Layer)**
+### Konsep MVC (Model-View-Controller)
 
-Model adalah representasi data dalam bentuk class. Berisi property dan method untuk parsing JSON.
+```
+┌─────────────────────────────────────────────┐
+│                   VIEW                      │
+│  (User Interface - views/)                 │
+│  - Menampilkan data ke user                │
+│  - Menerima input dari user                │
+│  - Tidak ada business logic                │
+└───────────────┬─────────────────────────────┘
+                │
+                ↓ User Action
+                │
+┌───────────────┴─────────────────────────────┐
+│              CONTROLLER                     │
+│  (Business Logic - controllers/)           │
+│  - Mengatur alur aplikasi                  │
+│  - Memproses input dari View               │
+│  - Memanggil Model/Service                 │
+│  - Update View melalui state               │
+└───────────────┬─────────────────────────────┘
+                │
+                ↓ Get/Update Data
+                │
+┌───────────────┴─────────────────────────────┐
+│               MODEL                         │
+│  (Data Structure - models/)                │
+│  - Representasi data                       │
+│  - Parse JSON dari API                     │
+│  - Business rules untuk data               │
+└─────────────────────────────────────────────┘
+                │
+┌───────────────┴─────────────────────────────┐
+│              SERVICE                        │
+│  (Network Layer - services/)               │
+│  - Komunikasi dengan API                   │
+│  - HTTP requests                           │
+│  - Error handling                          │
+└─────────────────────────────────────────────┘
+```
+
+---
+
+### 1. **MODEL (Data Layer)**
+
+Model adalah representasi data dalam bentuk class. Tidak ada business logic, hanya struktur data dan parsing.
+
+**Lokasi:** `lib/models/`
 
 **Contoh: `article_model.dart`**
+
 ```dart
 class ArticleModel {
   final String title;
@@ -78,24 +117,42 @@ class ArticleModel {
       description: json['description'],
     );
   }
+  
+  // Convert ke JSON
+  Map<String, dynamic> toJson() {
+    return {'title': title, 'description': description};
+  }
 }
 ```
 
-**💡 Konsep Penting:**
-- Menggunakan `factory constructor` untuk membuat object dari JSON
-- Nullable fields menggunakan `?` (contoh: `String?`)
-- Memberikan default value untuk mencegah null errors
+**💡 Tanggung Jawab Model:**
+- ✅ Mendefinisikan struktur data
+- ✅ Parsing JSON (fromJson)
+- ✅ Serialisasi data (toJson)
+- ❌ TIDAK ada business logic
+- ❌ TIDAK ada API calls
 
 ---
 
-### 2. **Provider (API Service)**
+### 2. **SERVICE (Network Layer)**
 
-Provider bertanggung jawab untuk komunikasi dengan external API.
+Service bertanggung jawab untuk komunikasi dengan external API atau data sources.
 
-**Contoh: `news_api_provider.dart`**
+**Lokasi:** `lib/services/`
+
+**Contoh: `news_api_service.dart`**
+
 ```dart
-class NewsApiProvider {
-  Future<NewsResponseModel> getTopHeadlines() async {
+class NewsApiService {
+  static const String _baseUrl = 'https://newsapi.org/v2';
+  static const String _apiKey = 'YOUR_API_KEY';
+  
+  Future<NewsResponseModel> getTopHeadlines({
+    String country = 'us',
+    String? category,
+  }) async {
+    final url = '$_baseUrl/top-headlines?country=$country&apiKey=$_apiKey';
+    
     final response = await http.get(Uri.parse(url));
     
     if (response.statusCode == 200) {
@@ -107,70 +164,87 @@ class NewsApiProvider {
 }
 ```
 
-**💡 Konsep Penting:**
-- Menggunakan `async/await` untuk operasi asynchronous
-- Error handling dengan `try-catch`
-- Parsing JSON response ke Model
+**💡 Tanggung Jawab Service:**
+- ✅ HTTP requests (GET, POST, dll)
+- ✅ Parse response ke Model
+- ✅ Handle HTTP errors
+- ❌ TIDAK ada UI logic
+- ❌ TIDAK ada state management
 
 ---
 
-### 3. **Controller (Business Logic & State Management)**
+### 3. **CONTROLLER (Business Logic & State)**
 
-Controller mengelola state dan business logic menggunakan GetX.
+Controller mengelola state dan business logic menggunakan GetX. Ini adalah "otak" dari aplikasi.
+
+**Lokasi:** `lib/controllers/`
 
 **Contoh: `home_controller.dart`**
+
 ```dart
 class HomeController extends GetxController {
-  // Reactive variables (Observable)
+  // Service instance
+  final NewsApiService _apiService = NewsApiService();
+  
+  // Reactive state (Observable)
   final RxList<ArticleModel> articles = <ArticleModel>[].obs;
   final RxBool isLoading = false.obs;
   
   @override
   void onInit() {
     super.onInit();
-    fetchNews();  // Load data saat controller dibuat
+    fetchNews();  // Load data saat pertama kali
   }
   
+  // Business logic method
   Future<void> fetchNews() async {
     isLoading.value = true;
     try {
-      final response = await _apiProvider.getTopHeadlines();
-      articles.value = response.articles;
+      final response = await _apiService.getTopHeadlines();
+      articles.value = response.articles;  // Update state
     } catch (e) {
-      // Handle error
+      Get.snackbar('Error', 'Failed: $e');
     } finally {
       isLoading.value = false;
     }
   }
+  
+  void changeCategory(String category) {
+    // Business logic untuk ganti kategori
+    selectedCategory.value = category;
+    fetchNews();
+  }
 }
 ```
 
-**💡 Konsep Penting GetX:**
-
-#### **Reactive Variables (Observables)**
-- `.obs` - Membuat variabel menjadi observable (reactive)
-- `.value` - Mengakses atau mengubah nilai observable
-- GetX otomatis me-rebuild UI ketika observable berubah
-
-#### **Lifecycle Methods**
-- `onInit()` - Dipanggil saat controller pertama kali dibuat
-- `onReady()` - Dipanggil setelah widget di-render
-- `onClose()` - Dipanggil saat controller dihancurkan
+**💡 Tanggung Jawab Controller:**
+- ✅ Manage application state
+- ✅ Business logic
+- ✅ Call services/APIs
+- ✅ Handle user actions
+- ✅ Update UI through reactive state
+- ❌ TIDAK ada UI code (Widget)
 
 ---
 
-### 4. **View (UI Layer)**
+### 4. **VIEW (User Interface)**
 
-View adalah tampilan UI yang menggunakan data dari Controller.
+View adalah tampilan UI yang murni presentational. Menggunakan data dari Controller.
+
+**Lokasi:** `lib/views/`
 
 **Contoh: `home_view.dart`**
+
 ```dart
 class HomeView extends GetView<HomeController> {
+  const HomeView({Key? key}) : super(key: key);
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(title: Text('News App')),
       body: Obx(() {
-        // UI otomatis rebuild ketika observable berubah
+        // UI otomatis rebuild saat observable berubah
         if (controller.isLoading.value) {
           return CircularProgressIndicator();
         }
@@ -187,30 +261,37 @@ class HomeView extends GetView<HomeController> {
 }
 ```
 
-**💡 Konsep Penting:**
-
-#### **GetView<T>**
-- Automatic controller injection
-- Akses controller dengan `controller.`
-- Tidak perlu `Get.find<T>()`
-
-#### **Obx()**
-- Widget yang otomatis rebuild ketika observable berubah
-- Hanya rebuild widget dalam scope `Obx()`
-- Sangat efisien untuk performa
+**💡 Tanggung Jawab View:**
+- ✅ Menampilkan UI
+- ✅ Menerima user input
+- ✅ Trigger controller methods
+- ✅ Observe state changes
+- ❌ TIDAK ada business logic
+- ❌ TIDAK ada API calls
+- ❌ TIDAK ada state management
 
 ---
 
-### 5. **Routing (Navigation)**
+### 5. **ROUTES (Navigation)**
 
-GetX menyediakan routing yang powerful dan mudah digunakan.
+Routes mendefinisikan navigasi aplikasi dengan GetX.
 
-**Setup Routes: `app_pages.dart`**
+**Lokasi:** `lib/routes/`
+
+**app_routes.dart** - Konstanta route names:
+```dart
+class AppRoutes {
+  static const String home = '/home';
+  static const String detail = '/detail';
+}
+```
+
+**app_pages.dart** - Route configuration:
 ```dart
 class AppPages {
   static final routes = [
     GetPage(
-      name: '/home',
+      name: AppRoutes.home,
       page: () => HomeView(),
       binding: BindingsBuilder(() {
         Get.lazyPut(() => HomeController());
@@ -220,28 +301,45 @@ class AppPages {
 }
 ```
 
-**Navigasi:**
-```dart
-// Navigate ke halaman lain
-Get.toNamed('/detail', arguments: article);
+**💡 Keuntungan Route Management:**
+- ✅ Named routes (type-safe)
+- ✅ Automatic dependency injection
+- ✅ Lazy loading controllers
+- ✅ Easy navigation
 
-// Kembali ke halaman sebelumnya
-Get.back();
+---
 
-// Mengambil arguments
-final article = Get.arguments;
+## 🔄 Flow Aplikasi MVC + GetX
+
+### Flow Lengkap:
+
 ```
+1. User membuka app
+   └─> main.dart
+       └─> GetMaterialApp dengan routes
+           └─> Navigate ke HomeView (initial route)
+               └─> HomeController dibuat (via Binding)
+                   └─> onInit() dipanggil
+                       └─> fetchNews()
+                           └─> NewsApiService.getTopHeadlines()
+                               └─> HTTP Request ke API
+                                   └─> Parse JSON ke Model
+                                       └─> Update articles.obs
+                                           └─> Obx() auto-rebuild UI
+                                               └─> User lihat list berita
 
-**💡 Konsep Penting:**
+2. User tap artikel
+   └─> Get.toNamed('/detail', arguments: article)
+       └─> DetailController dibuat
+           └─> onInit(): Get article from arguments
+               └─> DetailView shows data
 
-#### **Bindings**
-- Lazy loading controller (hanya dibuat saat dibutuhkan)
-- Otomatis dispose controller saat tidak digunakan
-- Memory efficient
-
-#### **Named Routes**
-- Type-safe routing dengan konstanta
-- Mudah maintenance dan refactor
+3. User tap kategori
+   └─> controller.changeCategory('technology')
+       └─> Update selectedCategory
+           └─> fetchNews() dengan kategori baru
+               └─> UI auto-update
+```
 
 ---
 
@@ -256,7 +354,7 @@ flutter pub get
 
 1. Buka [NewsAPI.org](https://newsapi.org/)
 2. Register dan dapatkan API key gratis
-3. Buka file `lib/app/data/providers/news_api_provider.dart`
+3. Buka file `lib/services/news_api_service.dart`
 4. Replace `YOUR_API_KEY_HERE` dengan API key Anda
 
 ```dart
@@ -275,7 +373,7 @@ flutter run
 ### ✅ Home Page
 - ✨ Menampilkan daftar berita terkini
 - 🔄 Pull-to-refresh untuk update data
-- 🏷️ Filter berita berdasarkan kategori
+- 🏷️ Filter berita berdasarkan kategori (general, business, tech, dll)
 - 🔍 Search berita
 - 📱 UI responsive dengan image caching
 
@@ -300,79 +398,127 @@ dependencies:
 
 ---
 
-## 🎓 Konsep GetX yang Dipelajari
+## 🎓 Konsep GetX dalam MVC
 
-### 1. **State Management**
-- ✅ Reactive Programming dengan `.obs`
-- ✅ Automatic UI rebuild dengan `Obx()`
-- ✅ State management tanpa boilerplate code
+### 1. **Reactive State (.obs)**
+```dart
+// Di Controller
+final count = 0.obs;           // Observable integer
+final items = <String>[].obs;  // Observable list
 
-### 2. **Dependency Injection**
-- ✅ `Get.put()` - Instant injection
-- ✅ `Get.lazyPut()` - Lazy loading
-- ✅ Automatic disposal
-
-### 3. **Route Management**
-- ✅ Named routes
-- ✅ Passing arguments
-- ✅ Navigation methods (`toNamed`, `back`, dll)
-- ✅ Bindings untuk controller
-
-### 4. **Other Features**
-- ✅ Snackbar - `Get.snackbar()`
-- ✅ Dialog - `Get.dialog()`
-- ✅ BottomSheet - `Get.bottomSheet()`
-
----
-
-## 🔄 Flow Aplikasi
-
+// Update
+count.value = 10;
+items.add('New item');
 ```
-1. main.dart
-   └─> GetMaterialApp dengan routing configuration
 
-2. User membuka app
-   └─> Navigate ke Home Page (initial route)
-       └─> HomeController.onInit() dipanggil
-           └─> fetchNews() - API call
-               └─> Update articles.obs
-                   └─> Obx() rebuild UI
+### 2. **Auto-rebuild UI (Obx)**
+```dart
+// Di View
+Obx(() => Text('Count: ${controller.count.value}'))
+```
 
-3. User tap artikel
-   └─> Get.toNamed('/detail', arguments: article)
-       └─> DetailController dibuat
-           └─> Get arguments dari Get.arguments
-               └─> Tampilkan detail di UI
+### 3. **GetView<T>**
+```dart
+// Automatic controller injection
+class HomeView extends GetView<HomeController> {
+  // Akses controller langsung dengan: controller.xxx
+}
+```
 
-4. User back
-   └─> Get.back()
-       └─> DetailController dispose otomatis
+### 4. **Dependency Injection**
+```dart
+// Di app_pages.dart
+binding: BindingsBuilder(() {
+  Get.lazyPut(() => HomeController());  // Lazy loading
+})
+```
+
+### 5. **Navigation**
+```dart
+// Navigate
+Get.toNamed('/detail', arguments: article);
+
+// Back
+Get.back();
+
+// Get arguments
+final article = Get.arguments;
 ```
 
 ---
 
-## 💡 Best Practices
+## 💡 Best Practices MVC + GetX
 
-### 1. **Separation of Concerns**
-- Model: Data structure
-- Provider: API communication
-- Controller: Business logic & state
-- View: UI only
+### ✅ DO (Lakukan)
 
-### 2. **Reactive Programming**
-- Gunakan `.obs` untuk data yang berubah
-- Wrap widget dengan `Obx()` untuk auto-rebuild
-- Hindari setState()
+**Model:**
+- Hanya data structure dan parsing
+- Gunakan factory constructor untuk fromJson
+- Gunakan nullable types dengan benar
 
-### 3. **Error Handling**
-- Selalu gunakan try-catch untuk async operations
-- Tampilkan error message ke user
-- Provide retry mechanism
+**Service:**
+- Satu service per API/data source
+- Return model objects
+- Handle errors dengan proper exceptions
 
-### 4. **Performance**
-- Lazy loading controllers dengan bindings
-- Image caching dengan cached_network_image
-- Minimize Obx() scope untuk rebuild yang efisien
+**Controller:**
+- Satu controller per page/feature
+- Gunakan `.obs` untuk reactive state
+- Call services, jangan langsung HTTP
+- Cleanup di onClose()
+
+**View:**
+- Gunakan `GetView<T>` untuk injection
+- Gunakan `Obx()` untuk reactive widgets
+- Extract widgets untuk readability
+- JANGAN taruh business logic di view
+
+### ❌ DON'T (Jangan)
+
+- ❌ Jangan taruh API calls di View
+- ❌ Jangan taruh business logic di Model
+- ❌ Jangan taruh UI widgets di Controller
+- ❌ Jangan langsung akses Service dari View
+- ❌ Jangan lupa dispose resources di onClose()
+
+---
+
+## 📊 Perbandingan: MVC Flat vs Nested Modules
+
+### Struktur MVC (Yang Sekarang) ✅
+
+```
+lib/
+├── models/          # Semua models
+├── views/           # Semua views
+├── controllers/     # Semua controllers
+├── services/        # Semua services
+└── routes/          # Routes
+```
+
+**Keuntungan:**
+- ✅ Simple dan mudah dipahami pemula
+- ✅ Jelas separation by type
+- ✅ Easy to navigate
+- ✅ Cocok untuk small-medium apps
+
+### Struktur Nested Modules (Alternative)
+
+```
+lib/
+└── modules/
+    ├── home/
+    │   ├── home_controller.dart
+    │   └── home_view.dart
+    └── detail/
+        ├── detail_controller.dart
+        └── detail_view.dart
+```
+
+**Keuntungan:**
+- ✅ Separation by feature
+- ✅ Scalable untuk large apps
+- ✅ Independent modules
 
 ---
 
@@ -391,13 +537,10 @@ Fitur yang bisa ditambahkan:
 3. **Share Functionality**
    - Implement share dengan package share_plus
 
-4. **Multiple Languages**
-   - Internationalization dengan GetX
-
-5. **Dark Mode**
+4. **Dark Mode**
    - Theme switching dengan GetX
 
-6. **Testing**
+5. **Testing**
    - Unit test untuk controllers
    - Widget test untuk views
 
@@ -408,26 +551,26 @@ Fitur yang bisa ditambahkan:
 - [GetX Documentation](https://pub.dev/packages/get)
 - [Flutter Documentation](https://flutter.dev/docs)
 - [News API Documentation](https://newsapi.org/docs)
-- [Dart Language Tour](https://dart.dev/guides/language/language-tour)
+- [MVC Pattern](https://en.wikipedia.org/wiki/Model%E2%80%93view%E2%80%93controller)
 
 ---
 
 ## 👨‍💻 Latihan
 
-### Latihan 1: Tambah Kategori Favorit
-1. Tambahkan field `favoriteCategory` di HomeController
-2. Save kategori favorit ke GetStorage
-3. Load kategori favorit saat app dibuka
+### Latihan 1: Tambah Field di Model
+1. Tambahkan field `source` di ArticleModel
+2. Parse dari JSON API
+3. Tampilkan di UI
 
-### Latihan 2: Implement Bookmark
-1. Buat controller untuk manage bookmark
-2. Save bookmarked articles ke local storage
-3. Tambahkan halaman untuk lihat bookmarks
+### Latihan 2: Buat Controller Baru
+1. Buat BookmarkController
+2. Implement save/delete bookmark
+3. Gunakan GetStorage untuk persistence
 
-### Latihan 3: Dark Mode
-1. Buat ThemeController dengan GetX
-2. Toggle between light/dark theme
-3. Save preference ke storage
+### Latihan 3: Tambah View Baru
+1. Buat BookmarkView untuk lihat saved articles
+2. Connect dengan BookmarkController
+3. Setup routing
 
 ---
 
@@ -439,6 +582,6 @@ Proyek ini dibuat untuk tujuan pembelajaran.
 
 ## 🙋‍♂️ Pertanyaan?
 
-Jika ada pertanyaan tentang materi ini, silakan buat issue atau diskusikan dengan instruktur Anda.
+Jika ada pertanyaan tentang materi ini, silakan diskusikan dengan instruktur Anda.
 
-**Happy Learning! 🚀**
+**Happy Learning dengan MVC + GetX! 🚀**

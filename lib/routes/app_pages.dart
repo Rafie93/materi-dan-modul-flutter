@@ -1,8 +1,8 @@
 import 'package:get/get.dart';
-import '../modules/home/views/home_view.dart';
-import '../modules/home/controllers/home_controller.dart';
-import '../modules/detail/views/detail_view.dart';
-import '../modules/detail/controllers/detail_controller.dart';
+import '../views/home_view.dart';
+import '../views/detail_view.dart';
+import '../controllers/home_controller.dart';
+import '../controllers/detail_controller.dart';
 import 'app_routes.dart';
 
 /// Kelas untuk mendefinisikan semua pages dan bindings

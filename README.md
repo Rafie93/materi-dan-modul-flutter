@@ -27,9 +27,9 @@ Repositori ini berisi kumpulan proyek praktik untuk mata kuliah **Pemrograman Mo
 Setiap modul terdapat pada branch masing-masing.  
 Silakan cek branch sesuai dengan nama modul:
 
-- `rest-api-news-app` => build-simple-news-app-with-getx
-- `scheduling` => flutter-background-tasks-and-notifications-tutorial
-- `local-storage` => flutter-mobile-data-persistence-and-crud-app
+-  `build-simple-news-app-with-getx` => Rest Api News App
+-  `flutter-background-tasks-and-notifications-tutorial` => Scheduling dan Notifikasi
+-  `flutter-mobile-data-persistence-and-crud-app` => Local Storage (Shared Preferences & SQLIte)
 
 ---
 

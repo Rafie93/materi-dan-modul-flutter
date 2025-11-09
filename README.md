@@ -1,11 +1,49 @@
-Repo Praktik Untuk Pemrograman Mobile
-1. Rest api simple build news app with getx
-   - Membuat aplikasi sederhana berbasis API (News App)
-   - Error handling saat mengambil data dari API
-2. Membuat scheduling
-    - Pengenalan konsep Scheduling di Flutter
-    - Notifikasi menggunakan Flutter Local Notifications
-    - Background Process
-    - Alarm Manager dan WorkManager
+# 🚀 Repo Praktik Pemrograman Mobile
 
-Masing-masing modul cek pada Branch :
+Repositori ini berisi kumpulan proyek praktik untuk mata kuliah **Pemrograman Mobile** menggunakan **Flutter** dan **GetX**.
+
+---
+
+## 🧩 Daftar Modul
+
+### 1. REST API – Simple News App with GetX
+- Membuat aplikasi sederhana berbasis **API (News App)**
+- Implementasi **error handling** saat mengambil data dari API
+
+### 2. Scheduling
+- Pengenalan konsep **Scheduling** di Flutter
+- **Notifikasi lokal** menggunakan *Flutter Local Notifications*
+- **Background Process**
+- Implementasi **Alarm Manager** dan **WorkManager**
+
+### 3. Local Storage
+- Penyimpanan data menggunakan **Shared Preferences**
+- Penggunaan **database lokal (SQLite)**
+- Studi kasus: Membuat **aplikasi catatan sederhana**
+
+---
+
+## 🪴 Struktur Branch
+Setiap modul terdapat pada branch masing-masing.  
+Silakan cek branch sesuai dengan nama modul:
+
+- `rest-api-news-app` => build-simple-news-app-with-getx
+- `scheduling` => flutter-background-tasks-and-notifications-tutorial
+- `local-storage` => flutter-mobile-data-persistence-and-crud-app
+
+---
+
+## 📱 Teknologi yang Digunakan
+- **Flutter**
+- **GetX (State Management)**
+- **Dart**
+- **SQLite / Shared Preferences**
+
+---
+
+## 🧑‍💻 Kontributor
+- Rafi'e., M.Kom 
+
+---
+
+💡 *Silakan lakukan clone dan eksplorasi setiap branch untuk melihat implementasi lengkap dari masing-masing modul.*

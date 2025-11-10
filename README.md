@@ -365,6 +365,7 @@ static const String _apiKey = 'your_actual_api_key_here';
 ```bash
 flutter run
 ```
+![alt text](https://github.com/Rafie93/materi-dan-modul-flutter/build-simple-news-app-with-getx/hasil run.PNG?raw=true)
 
 ---
 
